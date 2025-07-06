@@ -1,0 +1,199 @@
+***Copy and Pasted code from the 'Code View' of MATLAB App Designer***
+
+classdef GUI_DFT_analysis_proj < matlab.apps.AppBase
+
+    % Properties that correspond to app components
+    properties (Access = public)
+        UIFigure                   matlab.ui.Figure
+        Filtered_Audio             matlab.ui.control.Button
+        Original_Audio             matlab.ui.control.Button
+        CarrierFreq                matlab.ui.control.NumericEditField
+        CarrierFreqEditFieldLabel  matlab.ui.control.Label
+        StartButton                matlab.ui.control.Button
+        newYgraph                  matlab.ui.control.UIAxes
+        dmgraph                    matlab.ui.control.UIAxes
+        Ygraph                     matlab.ui.control.UIAxes
+        SAMPLESgraph               matlab.ui.control.UIAxes
+    end
+
+    
+    properties (Access = private)
+       OriginalSignal
+       FilteredSignal
+       SamplingRate
+       OriginalPlayer
+       FilteredPlayer
+    end
+    
+
+    % Callbacks that handle component events
+    methods (Access = private)
+
+% Button pushed function: StartButton
+function StartButtonPushed(app, event)
+    
+    % load in Audio signal
+    [SAMPLES, SAMPLING_RATE] = audioread('lab_09_signal.wav'); 
+    
+    % Store the user's carrier frequency
+    carrier_freq = app.CarrierFreq.Value;
+    
+    % check if carrier frequency is a valid number
+    if isempty(carrier_freq) || carrier_freq <= 0
+        uialert(app.UIFigure, 'Please enter a valid carrier frequency.', 'Input Error');
+        return;
+    end
+    
+    % define variables for later use
+    N = length(SAMPLES);
+    n = (0:N-1).';
+    w = carrier_freq*(2*pi/N);
+    
+    % Amplitude modulated signal (original signal multiplied by carrier signal)
+    dm = SAMPLES.*(cos(w.*n));
+    
+    % DFT of AM signal
+    Y = fft(dm);
+    
+    % Zero pad Y to eliminate unwanted frequencies
+    Y(30000:130000) = 0;
+    
+    % Convert back to time domain
+    newY = real(ifft(Y));
+    
+    % Plot graphs in GUI
+    plot(app.newYgraph, SAMPLES);
+    %title(app.newYgraph, 'Original Signal (SAMPLES');
+    
+    plot(app.dmgraph, dm);
+    %title(app.dmgraph, ' AM SAMPLES (dm)');
+    
+    plot(app.Ygraph, real(Y));
+    %title(app.Ygraph, 'DFT of dm (Y)');
+    
+    plot(app.SAMPLESgraph, newY);
+    %title(app.SAMPLESgraph, 'iltered Signal (newY)');
+    
+    % Connectting my code to the GUI
+    app.OriginalSignal = SAMPLES;
+    app.FilteredSignal = newY;
+    app.SamplingRate = SAMPLING_RATE;
+    
+    % Prepare my audio signals to be played
+    app.OriginalPlayer = audioplayer(app.OriginalSignal, app.SamplingRate);
+    app.FilteredPlayer = audioplayer(app.FilteredSignal, app.SamplingRate);
+end
+
+% Button pushed function: Original_Audio
+function Original_AudioPushed(app, event)
+       play(app.OriginalPlayer);
+end
+
+% Button pushed function: Filtered_Audio
+function Filtered_AudioPushed(app, event)
+       play(app.FilteredPlayer);
+    end
+end
+
+% Component initialization
+methods (Access = private)
+
+    % Create UIFigure and components
+    function createComponents(app)
+
+        % Create UIFigure and hide until all components are created
+        app.UIFigure = uifigure('Visible', 'off');
+        app.UIFigure.Position = [100 100 640 480];
+        app.UIFigure.Name = 'MATLAB App';
+
+        % Create SAMPLESgraph
+        app.SAMPLESgraph = uiaxes(app.UIFigure);
+        title(app.SAMPLESgraph, 'Original Audio (SAMPLES)')
+        xlabel(app.SAMPLESgraph, 'Time')
+        ylabel(app.SAMPLESgraph, 'Magnitude')
+        zlabel(app.SAMPLESgraph, 'Z')
+        app.SAMPLESgraph.Position = [18 312 292 157];
+
+        % Create Ygraph
+        app.Ygraph = uiaxes(app.UIFigure);
+        title(app.Ygraph, 'DFT of dm (Y)')
+        xlabel(app.Ygraph, 'Frequency')
+        ylabel(app.Ygraph, 'Magnitude')
+        zlabel(app.Ygraph, 'Z')
+        app.Ygraph.Position = [18 143 292 152];
+
+        % Create dmgraph
+        app.dmgraph = uiaxes(app.UIFigure);
+        title(app.dmgraph, 'Demodulated Signal (dm)')
+        xlabel(app.dmgraph, 'Time')
+        ylabel(app.dmgraph, 'Amplitude')
+        zlabel(app.dmgraph, 'Z')
+        app.dmgraph.Position = [331 312 292 157];
+
+        % Create newYgraph
+        app.newYgraph = uiaxes(app.UIFigure);
+        title(app.newYgraph, 'Filtered Audio (newY)')
+        xlabel(app.newYgraph, 'Time')
+        ylabel(app.newYgraph, 'Magnitude')
+        zlabel(app.newYgraph, 'Z')
+        app.newYgraph.Position = [331 143 293 152];
+
+        % Create StartButton
+        app.StartButton = uibutton(app.UIFigure, 'push');
+        app.StartButton.ButtonPushedFcn = createCallbackFcn(app, @StartButtonPushed, true);
+        app.StartButton.Position = [18 88 100 23];
+        app.StartButton.Text = 'StartButton';
+
+        % Create CarrierFreqEditFieldLabel
+        app.CarrierFreqEditFieldLabel = uilabel(app.UIFigure);
+        app.CarrierFreqEditFieldLabel.HorizontalAlignment = 'right';
+        app.CarrierFreqEditFieldLabel.Position = [141 88 66 22];
+        app.CarrierFreqEditFieldLabel.Text = 'CarrierFreq';
+
+        % Create CarrierFreq
+        app.CarrierFreq = uieditfield(app.UIFigure, 'numeric');
+        app.CarrierFreq.Position = [222 88 100 22];
+        app.CarrierFreq.Value = 31000;
+
+        % Create Original_Audio
+        app.Original_Audio = uibutton(app.UIFigure, 'push');
+        app.Original_Audio.ButtonPushedFcn = createCallbackFcn(app, @Original_AudioPushed, true);
+        app.Original_Audio.Position = [361 88 100 23];
+        app.Original_Audio.Text = 'Original_Audio';
+
+        % Create Filtered_Audio
+        app.Filtered_Audio = uibutton(app.UIFigure, 'push');
+        app.Filtered_Audio.ButtonPushedFcn = createCallbackFcn(app, @Filtered_AudioPushed, true);
+        app.Filtered_Audio.Position = [495 88 100 23];
+        app.Filtered_Audio.Text = 'Filtered_Audio';
+
+        % Show the figure after all components are created
+        app.UIFigure.Visible = 'on';
+    end
+end
+
+% App creation and deletion
+methods (Access = public)
+
+  % Construct app
+  function app = GUI_DFT_analysis_proj
+
+      % Create UIFigure and components
+      createComponents(app)
+
+      % Register the app with App Designer
+      registerApp(app, app.UIFigure)
+
+      if nargout == 0
+          clear app
+      end
+  end
+
+  % Code that executes before app deletion
+     function delete(app)
+
+      % Delete UIFigure when app is deleted
+        delete(app.UIFigure)
+     end
+  end
+end
